@@ -31,3 +31,10 @@
 *.db
 *.filters
 *.log
+*.ipch
+*.tlog
+*.pdb
+*.idb
+*.opendb
+*.ilk
+*.user

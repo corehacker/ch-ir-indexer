@@ -291,7 +291,6 @@ static HM_RET_E ch_ir_indexer_postings_hm_for_each_compress_cbk(
    //printf ("%s (%d,%d,%d), ", px_curr_node_data->u_hm_key.puc_str_key,
    //   px_posting->ui_doc_id, px_posting->ui_term_freq, px_posting->ui_gap);
    e_hm_ret = eHM_RET_SUCCESS;
-LBL_CLEANUP:
    return e_hm_ret;
 }
 
@@ -323,7 +322,6 @@ static HM_RET_E ch_ir_indexer_token_hm_for_each_compress_cbk(
    e_hm_ret = hm_for_each_v2 (px_token_hm_entry->x_postings.hl_posting_hm,
       &x_for_each_param, ch_ir_indexer_postings_hm_for_each_compress_cbk,
       px_token_hm_entry);
-LBL_CLEANUP:
    return e_hm_ret;
 }
 
@@ -339,6 +337,5 @@ CH_IR_RET_E ch_ir_compress_index (
    e_hm_ret = hm_for_each_v2 (px_indexer_ctxt->hl_token_hm, &x_for_each_param,
       ch_ir_indexer_token_hm_for_each_compress_cbk, px_indexer_ctxt);
 
-CLEAN_RETURN:
    return e_ret_val;
 }
