@@ -89,12 +89,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\ch-utils\ch-utils;..\..\..\..\..\ch-pal\ch-pal\linux;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\ch-sockmon\ch-sockmon;..\..\..\..\..\ch-utils\ch-utils;..\..\..\..\..\ch-pal\ch-pal\linux;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>..\..\..\..\..\ch-utils\win\win32\vs11\ch-utils-static\Debug;..\..\..\..\..\ch-pal\ch-pal\win\win32\vs11\ch-pal-static\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ch-pal-static.lib;ch-utils-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\ch-sockmon\win\win32\vs11\ch-sockmon-static\Debug;..\..\..\..\..\ch-utils\win\win32\vs11\ch-utils-static\Debug;..\..\..\..\..\ch-pal\ch-pal\win\win32\vs11\ch-pal-static\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ch-pal-static.lib;ch-utils-static.lib;ch-sockmon-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -142,6 +142,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\ch-ir-indexing-server.h" />
     <ClInclude Include="..\..\..\..\ch-ir-common.h" />
     <ClInclude Include="..\..\..\..\ch-ir-dir-parser.h" />
     <ClInclude Include="..\..\..\..\ch-ir-indexer-compress.h" />
@@ -152,6 +153,7 @@
     <ClInclude Include="..\..\..\..\porter.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\ch-ir-indexing-server.c" />
     <ClCompile Include="..\..\..\..\ch-ir-dir-parser.c" />
     <ClCompile Include="..\..\..\..\ch-ir-indexer-compress.c" />
     <ClCompile Include="..\..\..\..\ch-ir-indexer-main.c" />
