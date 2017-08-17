@@ -58,12 +58,29 @@
 #include <ch-pal/exp_pal.h>
 #include <ch-utils/exp_list.h>
 #include <ch-utils/exp_hashmap.h>
+#include <ch-utils/exp_sock_utils.h>
+#include <ch-utils/exp_q.h>
+#include <ch-utils/exp_msgq.h>
+#include <ch-utils/exp_task.h>
+#include <ch-sockmon/exp_sockmon.h>
 #include "porter.h"
 #include "ch-ir-common.h"
 #include "ch-ir-dir-parser.h"
 #include "ch-ir-tokenizer.h"
 #include "ch-ir-indexer.h"
 #include "ch-ir-indexer-compress.h"
+#include "ch-ir-indexing-server.h"
+
+typedef enum _CLI_OPTIONS_E
+{
+	eCLI_OPT_INVALID = 0,
+	eCLI_OPT_MODE = 1,
+	eCLI_OPT_LISTEN = 2,
+	eCLI_OPT_DIR = 3,
+	eCLI_OPT_STOP = 4,
+	eCLI_OPT_HM_SIZE = 5,
+	eCLI_OPT_MAX = 5
+} CLI_OPTIONS_E;
 
 #define DEFAULT_DIRECTORY_TO_PARSE                 "./Cranfield"
 #define DEFAULT_STOPWORDS_FILEPATH                 "./stopwords"
@@ -80,7 +97,9 @@ static void print_usage(
 {
    printf (
       "\n Usage:"
-         "\n \t%s <Directory To Parse> [<Stopwords filepath (Default: %s)>] [<Hashmap Table Size (Default: %d)>]"
+	   "\n \t%s <mode> [<Directory To Parse>] [<Stopwords filepath (Default: %s)>] [<Hashmap Table Size (Default: %d)>]"
+	   "\n \t\tmode - 1 - server mode/0 - file mode."
+	   "\n \t\tlisten - Listen port number."
          "\n \t\tDirectory To Parse - Absolute or relative directory path to parse files."
          "\n \t\tStopwords filepath - [Optional: Default: %s]."
          "\n \t\tHashmap Table Size - Table size of the hashmap. Smaller the table "
@@ -90,12 +109,58 @@ static void print_usage(
    printf ("\n");
 }
 
+typedef struct _APP_CTXT_X
+{
+	SOCKMON_HDL hl_sockmon_hdl;
+
+	INDEXING_SERVER_X *px_indexing_server;
+} APP_CTXT_X;
+
+static CH_IR_RET_E app_env_init(
+	APP_CTXT_X *px_app_ctxt,
+	uint16_t us_port_ho);
+
+static CH_IR_RET_E app_env_init(
+	APP_CTXT_X *px_app_ctxt,
+	uint16_t us_port_ho)
+{
+	CH_IR_RET_E e_main_ret = eCH_IR_RET_FAILURE;
+	SOCKMON_RET_E e_sockmon_ret = eSOCKMON_RET_FAILURE;
+	SOCKMON_CREATE_PARAMS_X x_sockmon_params = { 0 };
+
+	if (NULL == px_app_ctxt)
+	{
+		goto CLEAN_RETURN;
+	}
+
+	x_sockmon_params.us_port_range_start = 8008;
+	x_sockmon_params.us_port_range_end = 8018;
+	x_sockmon_params.ui_max_monitored_socks = 10;
+	e_sockmon_ret = sockmon_create(&(px_app_ctxt->hl_sockmon_hdl),
+		&x_sockmon_params);
+	if (eSOCKMON_RET_SUCCESS != e_sockmon_ret)
+	{
+		e_main_ret = eCH_IR_RET_RESOURCE_FAILURE;
+		goto CLEAN_RETURN;
+	}
+	else
+	{
+		INDEXING_SERVER_INIT_X x_indexing_server_params = { us_port_ho, px_app_ctxt->hl_sockmon_hdl };
+		e_main_ret = ch_ir_indexing_server_init(
+			&x_indexing_server_params, &px_app_ctxt->px_indexing_server);
+		e_main_ret = eCH_IR_RET_SUCCESS;
+	}
+CLEAN_RETURN:
+	return e_main_ret;
+}
+
 int main(
    int i_argc,
    char **ppc_argv)
 {
    int32_t i_ret_val = -1;
    CH_IR_RET_E e_ret_val = eCH_IR_RET_FAILURE;
+   
    CH_IR_INDEXER_INIT_PARAMS_X x_indexer_init_params = {0};
    uint8_t *puc_stopwords_filepath = NULL;
    uint8_t *puc_dir_path = NULL;
@@ -103,13 +168,17 @@ int main(
    PAL_LOGGER_INIT_PARAMS_X x_init_params = {false};
    PAL_RET_E e_pal_ret = ePAL_RET_FAILURE;
    CH_IR_INDEX_SERIALIZE_OPTIONS_X x_serialize_options = {false};
+   INDEXING_SERVER_X *px_indexing_server = NULL;
 
    uint8_t ucaa_sample_terms [] [250] = { "Reynolds", "NASA", "Prandtl", "flow",
       "pressure", "boundary", "shock" };
    uint32_t ui_sample_token_len = 0;
    uint32_t ui_i = 0;
+   uint32_t ui_mode = 0;
+   uint16_t us_port_ho = 0;
+   APP_CTXT_X *px_app_ctxt = NULL;
 
-   if (i_argc < 2 || i_argc > 4)
+   if (i_argc < (eCLI_OPT_INVALID + 2) || i_argc > eCLI_OPT_MAX)
    {
       print_usage (i_argc, ppc_argv);
       i_ret_val = -1;
@@ -118,9 +187,46 @@ int main(
 
    pal_env_init ();
 
-   x_init_params.e_level = eLOG_LEVEL_LOW;
+   x_init_params.e_level = eLOG_LEVEL_HIGH;
    x_init_params.b_enable_console_logging = true;
    pal_logger_env_init(&x_init_params);
+
+   if (NULL != ppc_argv[eCLI_OPT_MODE]) {
+	   e_pal_ret = pal_atoi(ppc_argv[eCLI_OPT_MODE], &ui_mode);
+	   if (ui_mode > 1) {
+		   ui_mode = 1;
+	   }
+	   if (ui_mode == 1) {
+		   if (NULL != ppc_argv[eCLI_OPT_LISTEN]) {
+			   uint32_t ui_temp = 0;
+			   e_pal_ret = pal_atoi(ppc_argv[eCLI_OPT_LISTEN], &ui_temp);
+			   if (ui_temp > USHRT_MAX || ui_temp < 1024) {
+				   us_port_ho = 9999;
+			   }
+			   else {
+				   us_port_ho = ui_temp;
+			   }
+		   }
+		   else {
+			   print_usage(i_argc, ppc_argv);
+			   i_ret_val = -1;
+			   goto CLEAN_RETURN;
+		   }
+	   }
+   }
+   else {
+	   print_usage(i_argc, ppc_argv);
+	   i_ret_val = -1;
+	   goto CLEAN_RETURN;
+   }
+
+   px_app_ctxt = pal_malloc(sizeof(APP_CTXT_X), NULL);
+
+   e_ret_val = app_env_init(px_app_ctxt, us_port_ho);
+
+   while (1) {
+	   pal_sleep(1000);
+   }
 
    if (NULL != ppc_argv [2])
    {
