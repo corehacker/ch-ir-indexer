@@ -55,6 +55,8 @@ typedef struct _INDEXING_SERVER_X {
 	PAL_SOCK_HDL hl_listen_hdl;
 
 	TASK_HDL hl_task_hdl;
+
+	HM_HDL hl_peer_hm;
 } INDEXING_SERVER_X;
 
 typedef enum _IS_MSG_ID_E
@@ -64,6 +66,9 @@ typedef enum _IS_MSG_ID_E
 	eIS_MSG_ID_LISTENER_START = 0x00001001,
 
 	eIS_MSG_ID_LISTENER_SOCK_ACT = 0x00001002,
+	/*!< #_IS_NODE_SOCK_ACT_DATA_X */
+
+	eIS_MSG_ID_CONN_SOCK_ACT = 0x00001003,
 	/*!< #_IS_NODE_SOCK_ACT_DATA_X */
 
 	eIS_MSG_ID_LISTENER_END = 0x00002000,
